@@ -50,7 +50,7 @@ The final ```output_filename``` must contain all records from ```filename``` in 
 - ```hashlib``` for SHA-1 deterministic hashing and Chord ring mapping
 - ```json``` for file metadata serialization
 - ```os``` and ```time``` for local file handling and Paxos sequence number generation
-- 
+  
 ## Setup and Execution Instructions
 
 ### 1. Start the Peer Nodes
