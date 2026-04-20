@@ -4,6 +4,47 @@
 ## Overview
 This project is a Distributed File System (DFS) built on a Chord-based Distributed Hash Table with strong consistency provided by a simplified Paxos consensus protocol. It supports **Distributed file stroage** using Chord lookups, **Page-based file metadata management**, and **Distributed sorting of file contents**. Chord assigns each key to the node responsible for its successor on the identifier ring, and uses finger tables to achieve logarithmic routing. Replication improves reliability and performance, but introduces consistency challenges. Paxos addresses the fault-tolerance side by ensuring that replicas execute operations in the same order despite crashes and lost or delayed messages.
 
+## System Architecture
+```text
++------------------------------------------+
+|            DFS Client (CLI)              |
+|        (dfs_layer.py test script)        |
++------------------------------------------+
+                    |
+                    v
++------------------------------------------+
+|               DFS API Layer              |
+|          (DFS Class in dfs_layer.py)     |
+|  - touch, append, read, delete           |
+|  - sort_file (Distributed Sorting Logic) |
++------------------------------------------+
+                    |
+                    v
++------------------------------------------+
+|           Paxos Consensus Layer          |
+|      (Part of chord_layer.py proxy)      |
+|  - Sequence (t) Generation               |
+|  - ACCEPT/LEARN Majority-based commitment|
++------------------------------------------+
+                    |
+                    v
++------------------------------------------+
+|           Chord Routing Layer            |
+|       (NetworkChordRing in chord_layer)  |
+|  - locate_successor (NodeID mapping)     |
+|  - Order-Preserving Key Projection       |
++------------------------------------------+
+                    |
+                    v (Network/XML-RPC)
++------------------------------------------+
+|           Distributed Storage            |
+|        (node_server.py instances)         |
+|  - Local DHT Storage (Metadata & Pages)  |
+|  - Local Sort Buffers                    |
+|  - Human-Readable Paxos Logs             |
++------------------------------------------+
+```
+
 ## Required Protocol Concepts and Functional Requirements
 - a **leader**
 - **proposal/sequence number** or ballot number
@@ -95,45 +136,7 @@ python dfs_layer.py
 - **`chord_layer.py`**: The middleware layer. It implements Chord ring routing and the Paxos `Propose -> Accept -> Learn -> Commit` workflow for replication.
 - * **`dfs_layer.py`**: The application layer. It handles file metadata, page chunking, and the distributed sorting logic. It acts as the client that coordinates with the node servers.
 
-## System Architecture
-```text
-+------------------------------------------+
-|            DFS Client (CLI)              |
-|        (dfs_layer.py test script)        |
-+------------------------------------------+
-                    |
-                    v
-+------------------------------------------+
-|               DFS API Layer              |
-|          (DFS Class in dfs_layer.py)     |
-|  - touch, append, read, delete           |
-|  - sort_file (Distributed Sorting Logic) |
-+------------------------------------------+
-                    |
-                    v
-+------------------------------------------+
-|           Paxos Consensus Layer          |
-|      (Part of chord_layer.py proxy)      |
-|  - Sequence (t) Generation               |
-|  - ACCEPT/LEARN Majority-based commitment|
-+------------------------------------------+
-                    |
-                    v
-+------------------------------------------+
-|           Chord Routing Layer            |
-|       (NetworkChordRing in chord_layer)  |
-|  - locate_successor (NodeID mapping)     |
-|  - Order-Preserving Key Projection       |
-+------------------------------------------+
-                    |
-                    v (Network/XML-RPC)
-+------------------------------------------+
-|           Distributed Storage            |
-|        (node_server.py instances)         |
-|  - Local DHT Storage (Metadata & Pages)  |
-|  - Local Sort Buffers                    |
-|  - Human-Readable Paxos Logs             |
-+------------------------------------------+
+
 
 ## Technical Implementation Details
 
