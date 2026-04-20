@@ -1,6 +1,4 @@
-Here is the content formatted specifically for a `README.md` file. You can copy the entire block below and paste it into a file named `README.md`.
 
-```markdown
 # Replicated Distributed File System (DFS) with Paxos & Chord
 
 ## Overview
