@@ -13,8 +13,8 @@ This project is a Distributed File System (DFS) built on a Chord-based Distribut
 
 For each replicated DFS update:
 1. Leader proposes operation ```o```
-3. Replicas receive '''ACCEPT(o, t)'''
-4. Replicas respond with '''LEARN(o, t)'''
+3. Replicas receive ```ACCEPT(o, t)```
+4. Replicas respond with ```LEARN(o, t)```
 5. Operation is committed once a majority has learned it
 6. All replicas apply committed operations in the same order
 
