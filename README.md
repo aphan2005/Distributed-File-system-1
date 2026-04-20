@@ -1,17 +1,8 @@
 
-# Replicated Distributed File System (DFS) with Paxos & Chord
+# Replicated Distributed File System (DFS)
 
 ## Overview
-This project is a Distributed File System (DFS) built on a Chord-based Distributed Hash Table (DHT) with strong consistency provided by a simplified Paxos consensus protocol. It supports distributed file storage, metadata management, and a MapReduce-style distributed sort.
-
-## Prerequisites
-* **Python 3.x**
-* Ensure all three source files are in the same directory:
-    1. `node_server.py`
-    2. `chord_layer.py`
-    3. `dfs_layer.py`
-
----
+This project is a Distributed File System (DFS) built on a Chord-based Distributed Hash Table with strong consistency provided by a simplified Paxos consensus protocol. It supports **Distributed file stroage** using Chord lookups, **Page-based file metadata management**, and **Distributed sorting of file contents**. Chord assigns each key to the node responsible for its successor on the identifier ring, and uses finger tables to achieve logarithmic routing. Replication improves reliability and performance, but introduces consistency challenges. Paxos addresses the fault-tolerance side by ensuring that replicas execute operations in the same order despite crashes and lost or delayed messages.
 
 ## Setup & Execution Instructions
 
