@@ -40,12 +40,21 @@ A distributed file is represented as:
 
 The final ```output_filename``` must contain all records from ```filename``` in globally sorted order.
 
-## Setup & Execution Instructions
-
-This is a distributed system using network sockets. You must start the background nodes first so the client has a network to connect to.
+---
+## Requirements and Core Modules Used
+- Python 3.8 or higher
+- This project relies entirely on Python's built in modules. No external dependencies or ```pip install``` commands are required
+- This system requires access to the local loopback interface (```localhost```) for IPC via RPC
+- ```xmlrpc.server``` and ```xmlrpc.client``` are used for distributed network communication between nodes
+- ```threading``` to handle concurrent requests on each peer node
+- ```hashlib``` for SHA-1 deterministic hashing and Chord ring mapping
+- ```json``` for file metadata serialization
+- ```os``` and ```time``` for local file handling and Paxos sequence number generation
+- 
+## Setup and Execution Instructions
 
 ### 1. Start the Peer Nodes
-Open **5 separate terminal windows** (or PowerShell windows) and run one of these commands in each. Leave these windows open while testing.
+Open **5 separate terminal windows** and run one of these commands in each. Leave these windows open while testing.
 
 **Terminal 1:**
 ```bash
