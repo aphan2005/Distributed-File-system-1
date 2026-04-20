@@ -58,8 +58,6 @@ Once the server terminals show they are listening, open a **6th terminal window*
 python dfs_layer.py
 ```
 
----
-
 ## Project Structure
 
 * **`node_server.py`**: The individual peer node. It handles local storage, the sorting buffer, and maintains a Paxos log. It uses `xmlrpc.server` to handle concurrent requests.
