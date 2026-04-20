@@ -91,9 +91,49 @@ python dfs_layer.py
 
 ## Project Structure
 
-* **`node_server.py`**: The individual peer node. It handles local storage, the sorting buffer, and maintains a Paxos log. It uses `xmlrpc.server` to handle concurrent requests.
-* **`chord_layer.py`**: The middleware layer. It implements Chord ring routing and the Paxos `Propose -> Accept -> Learn -> Commit` workflow for replication.
-* **`dfs_layer.py`**: The application layer. It handles file metadata, page chunking, and the distributed sorting logic. It acts as the client that coordinates with the node servers.
+- **`node_server.py`**: The individual peer node. It handles local storage, the sorting buffer, and maintains a Paxos log. It uses `xmlrpc.server` to handle concurrent requests.
+- **`chord_layer.py`**: The middleware layer. It implements Chord ring routing and the Paxos `Propose -> Accept -> Learn -> Commit` workflow for replication.
+- * **`dfs_layer.py`**: The application layer. It handles file metadata, page chunking, and the distributed sorting logic. It acts as the client that coordinates with the node servers.
+
+## System Architecture
+```text
++------------------------------------------+
+|            DFS Client (CLI)              |
+|        (dfs_layer.py test script)        |
++------------------------------------------+
+                    |
+                    v
++------------------------------------------+
+|               DFS API Layer              |
+|          (DFS Class in dfs_layer.py)     |
+|  - touch, append, read, delete           |
+|  - sort_file (Distributed Sorting Logic) |
++------------------------------------------+
+                    |
+                    v
++------------------------------------------+
+|           Paxos Consensus Layer          |
+|      (Part of chord_layer.py proxy)      |
+|  - Sequence (t) Generation               |
+|  - ACCEPT/LEARN Majority-based commitment|
++------------------------------------------+
+                    |
+                    v
++------------------------------------------+
+|           Chord Routing Layer            |
+|       (NetworkChordRing in chord_layer)  |
+|  - locate_successor (NodeID mapping)     |
+|  - Order-Preserving Key Projection       |
++------------------------------------------+
+                    |
+                    v (Network/XML-RPC)
++------------------------------------------+
+|           Distributed Storage            |
+|        (node_server.py instances)         |
+|  - Local DHT Storage (Metadata & Pages)  |
+|  - Local Sort Buffers                    |
+|  - Human-Readable Paxos Logs             |
++------------------------------------------+
 
 ## Technical Implementation Details
 
