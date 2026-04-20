@@ -4,7 +4,7 @@
 ## Overview
 This project is a Distributed File System (DFS) built on a Chord-based Distributed Hash Table with strong consistency provided by a simplified Paxos consensus protocol. It supports **Distributed file stroage** using Chord lookups, **Page-based file metadata management**, and **Distributed sorting of file contents**. Chord assigns each key to the node responsible for its successor on the identifier ring, and uses finger tables to achieve logarithmic routing. Replication improves reliability and performance, but introduces consistency challenges. Paxos addresses the fault-tolerance side by ensuring that replicas execute operations in the same order despite crashes and lost or delayed messages.
 
-## Required Protocol Concepts
+## Required Protocol Concepts and Functional Requirements
 - a **leader**
 - **proposal/sequence number** or ballot number
 - **ACCEPT** messages
@@ -17,6 +17,11 @@ For each replicated DFS update:
 4. Replicas respond with ```LEARN(o, t)```
 5. Operation is committed once a majority has learned it
 6. All replicas apply committed operations in the same order
+
+### Required Behavior
+A distributed file is represented as:
+- Metadata object
+-   logical filename
 
 ## Setup & Execution Instructions
 
