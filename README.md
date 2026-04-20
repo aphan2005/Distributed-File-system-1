@@ -51,7 +51,7 @@ python node_server.py 1169201309864722334562947866173026415724746034380 8004
 ```
 
 ### 2. Run the DFS Client
-Once the server terminals show they are "listening," open a **6th terminal window** and run the main application logic:
+Once the server terminals show they are listening, open a **6th terminal window** and run the main application logic:
 
 **Terminal 6:**
 ```bash
