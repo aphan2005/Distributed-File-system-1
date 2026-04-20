@@ -20,8 +20,13 @@ For each replicated DFS update:
 
 ### Required Behavior
 A distributed file is represented as:
-- Metadata object
+- **Metadata object**
     - logical filename
+    - total number of pages
+    - file size
+    - ordered list of page descriptors
+- **Page objects**
+      - each page stores a chunk of the file content
 
 ## Setup & Execution Instructions
 
