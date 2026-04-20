@@ -21,7 +21,7 @@ For each replicated DFS update:
 ### Required Behavior
 A distributed file is represented as:
 - Metadata object
--   logical filename
+    - logical filename
 
 ## Setup & Execution Instructions
 
