@@ -27,6 +27,16 @@ A distributed file is represented as:
     - ordered list of page descriptors
 - **Page objects**
     - each page stores a chunk of the file content
+    - each page is stored in the Chord ring using a hash-derived key
+ 
+### Required Distributed Sorting Model
+1. Read each page of the input file
+2. Parse each record ```(key, value)```
+3. Route each record to the peer responsible for the successor of ```hash(key)``` or ```key``` itself, depending on your chosen design
+4. At each responsible peer, insert incoming records into a local ordered structure
+    - e.g. sorted list, balanced BST abstraction, heap followed by final sort, etc.
+5. Produce a globally sorted output file
+6. Store the sorted output as a new distributed file in the DFS
 
 ## Setup & Execution Instructions
 
