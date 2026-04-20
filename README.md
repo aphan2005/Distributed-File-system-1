@@ -145,28 +145,28 @@ The project is organized into three primary modules, each representing a distinc
 This script implements the physical peer nodes. Each instance runs as an independent XML-RPC server process.
 
 **Responsibilities:**
-- **Local Storage:** Maintains the `dht_storage` dictionary for metadata and file pages.
-- **Sort Buffer:** Manages a temporary `sort_buffer` used during the distributed MapReduce-style sort.
-- **Paxos Logging:** Records every committed transaction into a human-readable `paxos_log` for auditing.
-- **Concurrency:** Utilizes `SimpleXMLRPCServer` with threading to handle multiple simultaneous requests from the client.
+- Maintains the `dht_storage` dictionary for metadata and file pages.
+- Manages a temporary `sort_buffer` used during the distributed MapReduce-style sort.
+- Records every committed transaction into a human-readable `paxos_log` for auditing.
+- Utilizes `SimpleXMLRPCServer` with threading to handle multiple simultaneous requests from the client.
 
 ### 2. `chord_layer.py` (The Middleware Layer)
 This is the networking engine of the system. It abstracts the complexity of the distributed cluster into a single routing interface.
 
 **Responsibilities:**
-- **Chord Routing:** Implements `locate_successor` to map keys to specific node IDs on the 160-bit identifier ring.
-- **Paxos Consensus:** Orchestrates the **ACCEPT** and **LEARN** phases across the 3-node replica group.
-- **Quorum Logic:** Enforces the "majority rule," requiring 2 out of 3 nodes to acknowledge an operation before finalizing a commit.
-- **Network Proxying:** Manages the RPC connections to the independent node servers.
+- Implements `locate_successor` to map keys to specific node IDs on the 160-bit identifier ring.
+- Orchestrates the **ACCEPT** and **LEARN** phases across the 3-node replica group.
+- Enforces the "majority rule," requiring 2 out of 3 nodes to acknowledge an operation before finalizing a commit.
+- Manages the RPC connections to the independent node servers.
 
 ### 3. `dfs_layer.py` (The Application Layer)
 This is the user-facing entry point and client-side logic. It translates high-level file system commands into low-level DHT operations.
 
 **Responsibilities:**
-- **Metadata Management:** Tracking file versions, total size, and the list of page GUIDs.
-- **File Chunking:** Slicing local files into fixed-size pages for distribution across the ring.
-- **Distributed Sorting:** Executing the three-stage "Scatter-Sort-Gather" process using an **Order-Preserving Hash**.
-- **Validation Suite:** Contains the main testing block that creates files, performs the sort, and verifies the Paxos logs.
+- Tracking file versions, total size, and the list of page GUIDs.
+- Slicing local files into fixed-size pages for distribution across the ring.
+- Executing the three-stage "Scatter-Sort-Gather" process using an **Order-Preserving Hash**.
+- Contains the main testing block that creates files, performs the sort, and verifies the Paxos logs.
 
 ---
 
@@ -174,29 +174,29 @@ This is the user-facing entry point and client-side logic. It translates high-le
 
 ### 1. Chord-Based Distributed Routing
 The system utilizes a **Chord-style Distributed Hash Table (DHT)** for decentralized data location.
-- **Identifier Space:** We use a 160-bit identifier space ($0$ to $2^{160}-1$). Both nodes and data keys are hashed into this space using the **SHA-1 algorithm**.
-- **Deterministic Mapping:** Data is stored using a "Successor" rule. When a file or metadata key is hashed, the system identifies the first node on the ring with an ID greater than or equal to the key's hash. This ensures that any client can find any piece of data without a central directory.
+- We use a 160-bit identifier space ($0$ to $2^{160}-1$). Both nodes and data keys are hashed into this space using the **SHA-1 algorithm**.
+- Data is stored using a "Successor" rule. When a file or metadata key is hashed, the system identifies the first node on the ring with an ID greater than or equal to the key's hash. This ensures that any client can find any piece of data without a central directory.
 
 ### 2. Simplified Paxos Consensus
 To ensure strong consistency and handle potential node crashes, we implemented a simplified **Paxos protocol**.
-- **Roles:** The node designated as the "Successor" by the Chord ring acts as the **Leader** for that specific key. The next two nodes in the ring act as **Followers**.
-- **Commitment Flow:** 1. **Propose/Accept:** The leader assigns a unique, monotonically increasing sequence number ($t$) based on a millisecond timestamp.
-    2. **Quorum Acknowledgment:** The leader sends an `ACCEPT(o, t)` message to the replica group. 
-    3. **Learn:** Replicas acknowledge the operation. Once a **majority** (2 out of 3 nodes) responds, the operation is considered "Learned."
-    4. **Commit:** The leader triggers an `apply_commit`, ensuring all replicas execute the operation in the exact same sequence order.
+- The node designated as the "Successor" by the Chord ring acts as the **Leader** for that specific key. The next two nodes in the ring act as **Followers**.
+- 1. **Propose/Accept:** The leader assigns a unique, monotonically increasing sequence number ($t$) based on a millisecond timestamp.
+    2. The leader sends an `ACCEPT(o, t)` message to the replica group. 
+    3. Replicas acknowledge the operation. Once a **majority** (2 out of 3 nodes) responds, the operation is considered "Learned."
+    4. The leader triggers an `apply_commit`, ensuring all replicas execute the operation in the exact same sequence order.
 
 ### 3. Metadata Management
 The DFS treats file metadata as a first-class object in the DHT.
-- **Deterministic Metadata Keys:** Metadata is stored under the key `hash("metadata:" + filename)`. 
-- **Versioning:** Each metadata object contains a `version` number that increments with every file modification, allowing the system to track the lineage of file updates.
-- **Chunking:** Large files are broken into smaller pages (chunks). The metadata stores a list of **GUIDs** (Global Unique Identifiers) for these pages, which are also stored deterministically using `hash(filename + ":" + page_number)`.
+- Metadata is stored under the key `hash("metadata:" + filename)`. 
+- Each metadata object contains a `version` number that increments with every file modification, allowing the system to track the lineage of file updates.
+- Large files are broken into smaller pages (chunks). The metadata stores a list of **GUIDs** (Global Unique Identifiers) for these pages, which are also stored deterministically using `hash(filename + ":" + page_number)`.
 
-### 4. Distributed Sorting (MapReduce Pattern)
+### 4. Distributed Sorting 
 A key feature of this implementation is the **Order-Preserving Map** used for distributed sorting.
-- **The Problem:** Standard SHA-1 hashing is designed to be random, which scatters alphabetically similar keys to completely different parts of the network, making global sorting impossible.
-- **The Solution:** For the sorting phase, we replace SHA-1 with a custom projection function. This function converts the first 8 characters of a key into a numerical value and scales it to the $2^{160}$ ring space.
-- **The Result:** Records are "shuffled" across the network so that specific nodes handle specific alphabetical ranges. This allows the system to gather sorted data simply by traversing the Chord ring in order.
+- Standard SHA-1 hashing is designed to be random, which scatters alphabetically similar keys to completely different parts of the network, making global sorting impossible.
+- For the sorting phase, we replace SHA-1 with a custom projection function. This function converts the first 8 characters of a key into a numerical value and scales it to the $2^{160}$ ring space.
+- Records are "shuffled" across the network so that specific nodes handle specific alphabetical ranges. This allows the system to gather sorted data simply by traversing the Chord ring in order.
 
 ### 5. Fault Model and Concurrency
-- **Fault Tolerance:** The system assumes **Crash Failures** and no Byzantine behavior. By using a 3-node replica group, the system can lose any single node in a group and continue to provide consistent read/write access via the remaining majority.
-- **Concurrency:** Each peer node runs as an independent process using Python’s `SimpleXMLRPCServer`. This provides a threaded environment where multiple RPC calls can be handled simultaneously, preventing a single slow network request from blocking the entire system.
+- The system assumes **Crash Failures** and no Byzantine behavior. By using a 3-node replica group, the system can lose any single node in a group and continue to provide consistent read/write access via the remaining majority.
+- Each peer node runs as an independent process using Python’s `SimpleXMLRPCServer`. This provides a threaded environment where multiple RPC calls can be handled simultaneously, preventing a single slow network request from blocking the entire system.
