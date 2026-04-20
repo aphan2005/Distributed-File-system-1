@@ -26,7 +26,7 @@ A distributed file is represented as:
     - file size
     - ordered list of page descriptors
 - **Page objects**
-      - each page stores a chunk of the file content
+    - each page stores a chunk of the file content
 
 ## Setup & Execution Instructions
 
