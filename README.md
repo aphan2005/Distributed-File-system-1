@@ -38,6 +38,8 @@ A distributed file is represented as:
 5. Produce a globally sorted output file
 6. Store the sorted output as a new distributed file in the DFS
 
+The final ```output_filename``` must contain all records from ```filename``` in globally sorted order.
+
 ## Setup & Execution Instructions
 
 This is a distributed system using network sockets. You must start the background nodes first so the client has a network to connect to.
