@@ -3,9 +3,12 @@ import os
 
 from chord_layer import DEFAULT_NODE_PORTS, NetworkChordRing
 
-
 class DFS:
     def __init__(self, chord_ring, chunk_size=1024):
+        """
+        Initializes the Distributed File System by linking it to a Chord ring 
+        middleware and ensuring a global root directory is initialized in the DHT.
+        """
         self.chord = chord_ring
         self.chunk_size = chunk_size
         self.root_dir_key = self.chord.hash_func("DFS_ROOT_DIR")
@@ -14,16 +17,33 @@ class DFS:
             self.chord.put(self.root_dir_key, json.dumps([]))
 
     def _get_metadata_key(self, filename):
+        """
+        Generates a deterministic hash key used to store and retrieve 
+        a file's metadata object within the DHT.
+        """
         return self.chord.hash_func(f"metadata:{filename}")
 
     def _get_page_key(self, filename, page_no):
+        """
+        Generates a deterministic hash key for a specific numbered page 
+        of a file, ensuring consistent addressing across the network.
+        """
         return self.chord.hash_func(f"{filename}:{page_no}")
 
     def ls(self):
+        """
+        Retrieves the global root directory from the DHT and returns 
+        a list of all existing filenames in the DFS.
+        """
         raw = self.chord.get(self.root_dir_key)
         return [] if raw is None else json.loads(raw)
 
     def touch(self, filename):
+        """
+        Creates an entry for a new, empty file. It initializes the metadata 
+        object and registers the filename in the global root directory.
+        Returns True if successful, False if the file already exists.
+        """
         meta_key = self._get_metadata_key(filename)
         if self.chord.get(meta_key) is not None:
             return False
@@ -45,6 +65,10 @@ class DFS:
         return True
 
     def stat(self, filename):
+        """
+        Retrieves and parses the metadata for a given file, including 
+        its size, version number, and the list of associated data pages.
+        """
         meta_key = self._get_metadata_key(filename)
         raw = self.chord.get(meta_key)
         if raw is None:
@@ -52,6 +76,11 @@ class DFS:
         return json.loads(raw)
 
     def append(self, filename, local_path):
+        """
+        Reads a local file, partitions it into fixed-size chunks (pages), 
+        and stores them across the DHT. Updates the file's metadata with 
+        page GUIDs, replica locations, and increments the version number.
+        """
         metadata = self.stat(filename)
         if not os.path.exists(local_path):
             raise FileNotFoundError(f"Local file '{local_path}' not found.")
@@ -79,6 +108,12 @@ class DFS:
         self.chord.put(self._get_metadata_key(filename), json.dumps(metadata))
 
     def read(self, filename):
+        """
+        Reconstructs the full content of a file by retrieving each individual 
+        data page from the DHT in sequential order. 
+        
+        Raises an Exception if any page GUID is missing from the network.
+        """
         metadata = self.stat(filename)
         result = bytearray()
 
@@ -91,12 +126,24 @@ class DFS:
         return bytes(result)
 
     def head(self, filename, n):
+        """
+        Retrieves the first 'n' bytes of the specified file.
+        """
         return self.read(filename)[:n]
 
     def tail(self, filename, n):
+        """
+        Retrieves the last 'n' bytes of the specified file.
+        """
         return self.read(filename)[-n:]
 
     def delete_file(self, filename):
+        """
+        Performs a full teardown of a file across the distributed system:
+        1. Deletes all data pages associated with the file.
+        2. Deletes the file's metadata entry.
+        3. Updates the root directory to remove the filename from the global list.
+        """
         try:
             metadata = self.stat(filename)
         except FileNotFoundError:
@@ -113,6 +160,12 @@ class DFS:
         return True
 
     def sort_file(self, filename, output_filename):
+        """
+        Performs a distributed, MapReduce-style sort of a file. Records are 
+        'shuffled' to responsible nodes based on their key, sorted locally 
+        on those nodes, and then aggregated into a single, globally ordered 
+        file stored back in the DFS.
+        """
         raw_text = self.read(filename).decode("utf-8")
         self.chord.clear_sort_buffers()
 
@@ -139,6 +192,11 @@ class DFS:
         self.validate_sorted_output(output_filename)
 
     def validate_sorted_output(self, filename):
+        """
+        Reads a file from the DFS and verifies that all record keys are 
+        arranged in non-decreasing lexicographical order. Raises an 
+        AssertionError if any out-of-order records are found.
+        """
         raw_text = self.read(filename).decode("utf-8")
         keys = []
         for line in raw_text.splitlines():
@@ -152,6 +210,12 @@ class DFS:
         return True
 
     def _order_preserving_map(self, key_string):
+        """
+        A specialized mapping function that projects string keys into the 
+        Chord ring space while preserving their lexicographical order. 
+        Unlike SHA-1, this ensures that 'smaller' keys are routed to nodes 
+        earlier in the ring, enabling global sorting.
+        """
         padded = key_string.ljust(8, "\x00")[:8]
         key_int = int.from_bytes(padded.encode("utf-8"), "big")
         max_val = (256 ** 8) - 1
@@ -159,6 +223,13 @@ class DFS:
 
 
 if __name__ == "__main__":
+    """
+    Main execution block that performs an end-to-end integration test of the system:
+    1. Orchestrates the initialization of the Chord middleware and DFS layer.
+    2. Generates local test data and bootstraps the DFS environment.
+    3. Executes the full 'Scatter-Sort-Gather' lifecycle.
+    4. Validates data integrity via automated sorting checks and manual Paxos log inspection.
+    """
     print("STARTING DFS")
     ring = NetworkChordRing(DEFAULT_NODE_PORTS)
 
