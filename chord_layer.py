@@ -1,79 +1,77 @@
 import hashlib
 import xmlrpc.client
 
+RING_BITS = 160
+RING_SPACE = 2 ** RING_BITS
+
+DEFAULT_NODE_PORTS = {
+    0: 8000,
+    292300327466180583640736966543256603931186508595: 8001,
+    584600654932361167281473933086513207862373017190: 8002,
+    876900982398541750922210899629769811793559525785: 8003,
+    1169201309864722334562947866173026415724746034380: 8004,
+}
+
+
+def sha1_int(text):
+    return int(hashlib.sha1(text.encode("utf-8")).hexdigest(), 16)
+
+
 class NetworkChordRing:
-    """Routes DFS requests over the network via RPC."""
     def __init__(self, node_ports):
-        # node_ports is a dict mapping node_id -> port
-        self.ring_space = 2**160 
-        self.sorted_node_ids = sorted(list(node_ports.keys()))
-        
-        # Connect to the remote RPC servers instead of local memory
-        self.nodes = {}
-        for node_id, port in node_ports.items():
-            url = f"http://localhost:{port}"
-            self.nodes[node_id] = xmlrpc.client.ServerProxy(url, allow_none=True)
+        self.ring_space = RING_SPACE
+        self.node_ports = dict(node_ports)
+        self.sorted_node_ids = sorted(self.node_ports.keys())
+        self.nodes = {
+            node_id: xmlrpc.client.ServerProxy(
+                f"http://localhost:{port}", allow_none=True
+            )
+            for node_id, port in self.node_ports.items()
+        }
 
     def hash_func(self, key_string):
-        return int(hashlib.sha1(key_string.encode('utf-8')).hexdigest(), 16)
+        return sha1_int(key_string)
 
     def locate_successor(self, key_hash):
         for node_id in self.sorted_node_ids:
             if node_id >= key_hash:
                 return node_id
-        return self.sorted_node_ids[0] 
+        return self.sorted_node_ids[0]
 
     def get_replica_group(self, key_hash, num_replicas=3):
-        group = []
-        start_idx = 0
-        for i, node_id in enumerate(self.sorted_node_ids):
-            if node_id >= key_hash:
-                start_idx = i
-                break
-                
-        for i in range(num_replicas):
-            idx = (start_idx + i) % len(self.sorted_node_ids)
-            group.append(self.sorted_node_ids[idx])
-        return group
-
-    # --- Replicated Network DHT Operations ---
+        leader_id = self.locate_successor(key_hash)
+        start_index = self.sorted_node_ids.index(leader_id)
+        replica_count = min(num_replicas, len(self.sorted_node_ids))
+        return [
+            self.sorted_node_ids[(start_index + offset) % len(self.sorted_node_ids)]
+            for offset in range(replica_count)
+        ]
 
     def put(self, key, value):
-            replica_group = self.get_replica_group(key)
-            import time
-            # Cast timestamp to string to prevent XML-RPC 32-bit overflow
-            t = str(int(time.time() * 1000)) 
-            
-            learn_count = 0
-            for node_id in replica_group:
-                rpc_proxy = self.nodes[node_id]
-                # Send t as a string
-                accepted = rpc_proxy.receive_accept("PUT operation", t)
-                if accepted: learn_count += 1
-                    
-            if learn_count >= 2: 
-                for node_id in replica_group:
-                    # Cast key to string before sending
-                    self.nodes[node_id].apply_commit("PUT", str(key), value, t)
-            else:
-                raise Exception(f"Paxos Write Failed for key {key}")
+        leader_id = self.locate_successor(key)
+        return self.nodes[leader_id].client_put(str(key), value)
 
     def get(self, key):
-        replica_group = self.get_replica_group(key)
-        leader_id = replica_group[0]
-        # Cast key to string before requesting
-        return self.nodes[leader_id].get_data(str(key))
+        leader_id = self.locate_successor(key)
+        return self.nodes[leader_id].client_get(str(key))
 
     def delete(self, key):
-        replica_group = self.get_replica_group(key)
-        import time
-        t = str(int(time.time() * 1000))
-        
-        learn_count = 0
-        for node_id in replica_group:
-            if self.nodes[node_id].receive_accept("DELETE operation", t):
-                learn_count += 1
-                
-        if learn_count >= 2:
-            for node_id in replica_group:
-                self.nodes[node_id].apply_commit("DELETE", str(key), None, t)
+        leader_id = self.locate_successor(key)
+        return self.nodes[leader_id].client_delete(str(key))
+
+    def clear_sort_buffers(self):
+        for node_id in self.sorted_node_ids:
+            try:
+                self.nodes[node_id].clear_buffer()
+            except Exception:
+                pass
+
+    def collect_sorted_records(self):
+        records = []
+        for node_id in self.sorted_node_ids:
+            try:
+                local_records = self.nodes[node_id].local_sort()
+                records.extend(local_records)
+            except Exception:
+                pass
+        return records
